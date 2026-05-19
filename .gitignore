@@ -1,0 +1,62 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyc
+
+# ML models (large binary files)
+backend/models/*.pkl
+backend/models/*.joblib
+
+# Node
+node_modules/
+.next/
+out/
+.npm
+
+# Logs
+*.log
+logs/
+nginx_logs/
+
+# Docker SSL certs (never commit private keys)
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/ssl/*.crt
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Alembic
+backend/alembic/versions/*.pyc
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Misc
+*.bak
+*.tmp
