@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, func
+from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, Field
 
 from app.database import get_db
@@ -138,7 +139,7 @@ async def get_top_props(
 
     query = (
         select(Prop)
-        .join(Player, Prop.player_id == Player.id, isouter=True)
+        .options(selectinload(Prop.player))
         .where(Prop.status == PropStatus.ACTIVE)
         .where(
             or_(
@@ -173,7 +174,7 @@ async def get_best_bets(
     """Best bets: high EV + high ML confidence + low risk."""
     query = (
         select(Prop)
-        .join(Player, Prop.player_id == Player.id, isouter=True)
+        .options(selectinload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             or_(Prop.ev_over >= 5.0, Prop.ev_under >= 5.0),
@@ -197,7 +198,7 @@ async def get_mispriced_props(
     """Props with the largest line discrepancy vs sportsbook consensus."""
     query = (
         select(Prop)
-        .join(Player, Prop.player_id == Player.id, isouter=True)
+        .options(selectinload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             Prop.line_discrepancy.isnot(None),
@@ -216,7 +217,7 @@ async def get_sharp_action(
     """Stale or rapidly-moving lines — potential sharp money signal."""
     query = (
         select(Prop)
-        .join(Player, Prop.player_id == Player.id, isouter=True)
+        .options(selectinload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             or_(Prop.is_stale == True, Prop.is_boosted == True),
@@ -249,7 +250,7 @@ async def parlay_builder(
 
     query = (
         select(Prop)
-        .join(Player, Prop.player_id == Player.id, isouter=True)
+        .options(selectinload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             or_(Prop.ev_over >= min_ev_per_leg, Prop.ev_under >= min_ev_per_leg),
@@ -313,7 +314,7 @@ async def parlay_builder(
 @router.get("/{prop_id}", response_model=PropDetailOut)
 async def get_prop(prop_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Prop).join(Player, Prop.player_id == Player.id, isouter=True).where(Prop.id == prop_id)
+        select(Prop).options(selectinload(Prop.player)).where(Prop.id == prop_id)
     )
     prop = result.scalar_one_or_none()
     if not prop:
@@ -342,6 +343,7 @@ async def search_player_props(
     """Search active props for a specific player."""
     query = (
         select(Prop)
+        .options(selectinload(Prop.player))
         .join(Player, Prop.player_id == Player.id)
         .where(
             Player.name.ilike(f"%{player_name}%"),
