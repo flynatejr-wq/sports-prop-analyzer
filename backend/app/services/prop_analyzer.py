@@ -461,8 +461,9 @@ class PropAnalyzer:
                 "game_date": None,
                 "opponent": None,
                 "is_boosted": False,
-                "ev_over": None,
-                "ev_under": None,
+                # Use vs-book EV as the primary EV fields so /top and /best-bets queries work
+                "ev_over": ev_over_vs_book,
+                "ev_under": ev_under_vs_book,
                 "ev_over_vs_book": ev_over_vs_book,
                 "ev_under_vs_book": ev_under_vs_book,
                 "edge_classification": ev.classify_edge(edge),
