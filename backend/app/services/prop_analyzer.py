@@ -538,6 +538,7 @@ class PropAnalyzer:
                 db.add(new_prop)
 
         await db.flush()
+        await db.commit()
 
     async def _get_or_create_player(self, db: AsyncSession, p: Dict) -> Optional[Player]:
         result = await db.execute(

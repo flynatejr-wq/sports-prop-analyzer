@@ -322,12 +322,15 @@ async def get_prop(prop_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refresh")
-async def trigger_refresh(
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-):
+async def trigger_refresh(background_tasks: BackgroundTasks):
     """Manually trigger a full prop analysis refresh."""
-    background_tasks.add_task(analyzer.run_full_analysis, db)
+    from app.database import AsyncSessionLocal
+
+    async def _run_with_own_session():
+        async with AsyncSessionLocal() as db:
+            await analyzer.run_full_analysis(db)
+
+    background_tasks.add_task(_run_with_own_session)
     return {"message": "Refresh triggered", "status": "queued"}
 
 
