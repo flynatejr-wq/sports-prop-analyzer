@@ -1,7 +1,6 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  output: "standalone",  // required for Docker multi-stage build
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: "standalone",
   async rewrites() {
     return [
       {
@@ -17,4 +16,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
