@@ -60,13 +60,7 @@ class PropAnalyzer:
 
         logger.info("Starting full prop analysis for sports: %s", sports)
 
-        # Fetch PrizePicks projections
-        pp_projections = await self.pp_scraper.get_all_sports()
-        if not pp_projections:
-            logger.warning("No PrizePicks projections returned")
-            return []
-
-        # Fetch sportsbook odds for each sport
+        # Fetch sportsbook odds for each sport (needed regardless of PP)
         sbook_lines: Dict[str, List[OddsLine]] = {}
         injury_map: Dict[str, str] = {}
 
@@ -83,18 +77,25 @@ class PropAnalyzer:
                 sbook_lines[sport], injuries = result
                 injury_map.update(injuries)
 
-        # Build consensus line map: {(player_name, stat_type): avg_line}
-        consensus_map = self._build_consensus_map(sbook_lines)
+        # Try PrizePicks first
+        pp_projections = await self.pp_scraper.get_all_sports()
+        enriched_props: List[Dict] = []
 
-        # Analyze each prop
-        enriched_props = []
-        for proj in pp_projections:
-            try:
-                prop_data = await self._analyze_projection(proj, consensus_map, injury_map, db)
-                if prop_data:
-                    enriched_props.append(prop_data)
-            except Exception as exc:
-                logger.warning("Failed to analyze prop %s %s: %s", proj.player_name, proj.stat_type, exc)
+        if pp_projections:
+            consensus_map = self._build_consensus_map(sbook_lines)
+            for proj in pp_projections:
+                try:
+                    prop_data = await self._analyze_projection(proj, consensus_map, injury_map, db)
+                    if prop_data:
+                        enriched_props.append(prop_data)
+                except Exception as exc:
+                    logger.warning("Failed to analyze prop %s %s: %s", proj.player_name, proj.stat_type, exc)
+        else:
+            logger.warning("PrizePicks unavailable — falling back to TheOddsAPI-only analysis")
+
+        # Fall back to odds-only analysis when PP is unavailable or returned nothing
+        if not enriched_props:
+            enriched_props = await self._analyze_from_odds_api(db, sbook_lines, injury_map)
 
         # Sort by absolute EV descending
         enriched_props.sort(key=lambda p: abs(p.get("ev_over") or 0), reverse=True)
@@ -365,6 +366,125 @@ class PropAnalyzer:
         # Each point above/below league avg → ~1% adjustment for scoring props
         return round((opp_rating - league_avg) * 0.8, 1)
 
+    async def _analyze_from_odds_api(
+        self,
+        db: AsyncSession,
+        sbook_lines: Dict[str, List[OddsLine]],
+        injury_map: Dict[str, str],
+    ) -> List[Dict]:
+        """
+        Build props directly from sportsbook lines when PrizePicks is unavailable.
+        Groups lines by (player, stat), removes vig across books to derive fair probability,
+        then computes EV vs the best available odds.
+        """
+        # Accumulate all lines across sports: key = (player_lower, stat_lower, sport)
+        groups: Dict[Tuple[str, str, str], Dict] = {}
+
+        for sport, lines in sbook_lines.items():
+            for line in lines:
+                key = (line.player_name.lower(), line.stat_type.lower(), sport)
+                if key not in groups:
+                    groups[key] = {
+                        "player_name": line.player_name,
+                        "stat_type": line.stat_type,
+                        "sport": sport,
+                        "lines": [],
+                        "over_odds_by_book": {},
+                        "under_odds_by_book": {},
+                    }
+                groups[key]["lines"].append(line.line)
+                if line.over_odds:
+                    groups[key]["over_odds_by_book"][line.sportsbook] = line.over_odds
+                if line.under_odds:
+                    groups[key]["under_odds_by_book"][line.sportsbook] = line.under_odds
+
+        enriched: List[Dict] = []
+
+        for key, g in groups.items():
+            player_name = g["player_name"]
+            stat_type = g["stat_type"]
+            sport = g["sport"]
+
+            lines_list = g["lines"]
+            if not lines_list:
+                continue
+
+            consensus_line = round(sum(lines_list) / len(lines_list), 1)
+
+            # Remove vig across all books that have both sides
+            no_vig_probs_over: List[float] = []
+            books_over = g["over_odds_by_book"]
+            books_under = g["under_odds_by_book"]
+
+            for book in set(books_over) & set(books_under):
+                try:
+                    p_over, _ = ev.remove_vig(books_over[book], books_under[book])
+                    no_vig_probs_over.append(p_over)
+                except Exception:
+                    pass
+
+            if not no_vig_probs_over:
+                # Not enough data for vig removal — skip this prop
+                continue
+
+            fair_prob_over = sum(no_vig_probs_over) / len(no_vig_probs_over)
+            fair_prob_under = 1.0 - fair_prob_over
+
+            # Best available odds (highest payout = most positive American odds)
+            best_over_odds = max(books_over.values()) if books_over else -110.0
+            best_under_odds = max(books_under.values()) if books_under else -110.0
+
+            ev_over_vs_book = ev.calculate_ev(fair_prob_over, best_over_odds)
+            ev_under_vs_book = ev.calculate_ev(fair_prob_under, best_under_odds)
+
+            edge = max(ev_over_vs_book, ev_under_vs_book)
+
+            implied_over, implied_under = ev.calculate_implied_prob_from_line(
+                consensus_line, consensus_line
+            )
+
+            injury_status = injury_map.get(player_name.lower())
+
+            external_id = f"odds_{sport}_{player_name.lower().replace(' ', '_')}_{stat_type.lower().replace(' ', '_')}_{consensus_line}"
+
+            enriched.append({
+                "player_name": player_name,
+                "team": None,
+                "sport": sport,
+                "league": sport,
+                "position": None,
+                "image_url": None,
+                "stat_type": stat_type,
+                "line": consensus_line,
+                "source": "oddsapi",
+                "external_id": external_id,
+                "game_date": None,
+                "opponent": None,
+                "is_boosted": False,
+                "ev_over": None,
+                "ev_under": None,
+                "ev_over_vs_book": ev_over_vs_book,
+                "ev_under_vs_book": ev_under_vs_book,
+                "edge_classification": ev.classify_edge(edge),
+                "consensus_line": consensus_line,
+                "fair_value": consensus_line,
+                "line_discrepancy": 0.0,
+                "implied_prob_over": round(fair_prob_over, 4),
+                "implied_prob_under": round(fair_prob_under, 4),
+                "fair_prob_over": fair_prob_over,
+                "is_stale": False,
+                "last_5_avg": None,
+                "season_avg": None,
+                "home_avg": None,
+                "away_avg": None,
+                "hit_rate_over": None,
+                "injury_status": injury_status,
+                "matchup_adjustment": 0.0,
+            })
+
+        logger.info("Odds-only analysis: %d props generated", len(enriched))
+        return enriched
+
     async def _upsert_props(self, db: AsyncSession, prop_dicts: List[Dict]):
         """Insert new props or update existing ones by external_id."""
         for p in prop_dicts:
@@ -372,8 +492,9 @@ class PropAnalyzer:
             if not external_id:
                 continue
 
+            source = p.get("source", "prizepicks")
             result = await db.execute(
-                select(Prop).where(Prop.external_id == external_id, Prop.source == "prizepicks")
+                select(Prop).where(Prop.external_id == external_id, Prop.source == source)
             )
             existing = result.scalar_one_or_none()
 
@@ -390,7 +511,7 @@ class PropAnalyzer:
                     continue
                 new_prop = Prop(
                     player_id=player.id,
-                    source="prizepicks",
+                    source=source,
                     external_id=external_id,
                     sport=p["sport"],
                     league=p.get("league"),
@@ -426,8 +547,9 @@ class PropAnalyzer:
         )
         player = result.scalar_one_or_none()
         if not player:
+            src_prefix = p.get("source", "pp")
             player = Player(
-                external_id=f"pp_{p.get('external_id', '')}",
+                external_id=f"{src_prefix}_{p.get('external_id', '')}",
                 name=p["player_name"],
                 sport=p["sport"],
                 team=p.get("team"),
