@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.railway.app/railway.json",
   "deploy": {
-    "startCommand": "sh -c 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'",
+    "startCommand": "/app/start.sh",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
