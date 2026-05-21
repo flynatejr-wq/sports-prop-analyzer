@@ -3,11 +3,11 @@ ESPN public API scraper — game schedules, scores, and player news.
 No auth required.
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from app.scrapers.base import BaseScraper
+from typing import List, Optional
+
 from app.config import settings
+from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,8 @@
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+# SQLAlchemy relationship forward-references are string literals — ruff
+# can't resolve them, so F821 is a false positive in all model files.
+"app/models/*.py" = ["F821"]

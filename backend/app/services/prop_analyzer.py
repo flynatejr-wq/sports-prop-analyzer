@@ -4,23 +4,20 @@ and ML predictions to produce enriched Prop objects ready for the DB.
 """
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Tuple
 from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
 
-from app.models.prop import Prop, PropStatus
 from app.models.player import Player, PlayerStats
-from app.models.odds import SbookLine
-from app.scrapers.prizepicks import PrizePicksScraper, PrizePicksProjection
-from app.scrapers.odds_api import OddsAPIScraper, OddsLine
-from app.scrapers.nba_api import NBAApiScraper
+from app.models.prop import Prop
 from app.scrapers.espn import ESPNScraper
 from app.scrapers.injury import InjuryScraper
+from app.scrapers.nba_api import NBAApiScraper
+from app.scrapers.odds_api import OddsAPIScraper, OddsLine
+from app.scrapers.prizepicks import PrizePicksProjection, PrizePicksScraper
 from app.services import ev_calculator as ev
-from app.config import settings
 from app.utils.cache import cache
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,9 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
+
 import httpx
+
 from app.config import settings
 from app.models.alert import AlertType
 

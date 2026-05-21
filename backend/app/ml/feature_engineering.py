@@ -3,7 +3,8 @@ Feature engineering for prop prediction models.
 Transforms raw PlayerStats rows into ML-ready feature vectors.
 """
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)

@@ -3,11 +3,13 @@ User settings API — stores and retrieves per-user preferences.
 Uses a simple JSON config backed by Redis for now;
 swap for a DB table in multi-user deployments.
 """
-from typing import Any, Dict, Optional
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from app.utils.cache import cache
+
 from app.config import settings
+from app.utils.cache import cache
 
 router = APIRouter()
 
@@ -95,8 +97,8 @@ async def update_bankroll_settings(updates: BankrollSettings):
 @router.get("/test-discord")
 async def test_discord_alert():
     """Fire a test Discord alert to verify webhook configuration."""
-    from app.services.alerts import send_discord
     from app.models.alert import AlertType
+    from app.services.alerts import send_discord
     success = await send_discord(
         title="🎯 PropEdge AI — Test Alert",
         message="Your Discord alerts are configured correctly! High-EV props will appear here.",

@@ -2,7 +2,6 @@
 Kelly Criterion bankroll sizing and related utilities.
 All functions are pure — no side effects.
 """
-from typing import Optional
 
 
 def kelly_fraction(

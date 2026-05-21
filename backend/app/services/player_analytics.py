@@ -5,8 +5,8 @@ pace, usage, matchup, and injury impact into a single projected value.
 """
 import logging
 import math
-from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def weighted_projection(
 
     # ── Recent form ──────────────────────────────────────────────────────────
     recent_avg = sum(last_5) / len(last_5) if last_5 else season_avg
-    l10_avg = sum(last_10) / len(last_10) if last_10 else season_avg
+    _l10_avg = sum(last_10) / len(last_10) if last_10 else season_avg  # reserved for future use
 
     # Trend detection
     if len(last_5) >= 3:

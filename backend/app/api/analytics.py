@@ -1,16 +1,17 @@
 """Analytics, bankroll, and historical performance endpoints."""
 from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, Integer, case
 from pydantic import BaseModel
+from sqlalchemy import case, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.prop import Prop, PropResult, PropStatus
-from app.models.player import Player
-from app.models.user import UserPick, BetDirection
+from app.models.user import BetDirection, UserPick
 from app.services.kelly_criterion import (
-    recommended_stake, parlay_probability, roi, clv_tracking
+    recommended_stake,
+    roi,
 )
 
 router = APIRouter()
@@ -45,8 +46,11 @@ class PickRequest(BaseModel):
 @router.post("/kelly", response_model=BankrollResponse)
 async def kelly_sizing(req: BankrollRequest):
     """Calculate Kelly Criterion stake size."""
-    from app.services.kelly_criterion import kelly_from_american, expected_profit, american_to_decimal
     from app.services.ev_calculator import american_to_decimal as atd
+    from app.services.kelly_criterion import (
+        expected_profit,
+        kelly_from_american,
+    )
 
     kelly = kelly_from_american(req.prob_win, req.american_odds, req.fraction)
     stake = recommended_stake(req.bankroll, req.prob_win, req.american_odds, req.max_pct, req.fraction)
@@ -80,7 +84,7 @@ async def analytics_summary(db: AsyncSession = Depends(get_db)) -> Dict[str, Any
     # Stale lines
     stale = await db.scalar(
         select(func.count()).select_from(Prop).where(
-            Prop.status == PropStatus.ACTIVE, Prop.is_stale == True
+            Prop.status == PropStatus.ACTIVE, Prop.is_stale
         )
     )
 

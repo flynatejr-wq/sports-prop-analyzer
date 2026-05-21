@@ -4,18 +4,18 @@ Includes top picks, EV ranking, filters, and per-prop detail.
 """
 import logging
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc, func
 from sqlalchemy.orm import selectinload
-from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.models.prop import Prop, PropStatus, PropResult
 from app.models.player import Player
-from app.utils.cache import cache
+from app.models.prop import Prop, PropStatus
 from app.services.prop_analyzer import PropAnalyzer
-from app.config import settings
+from app.utils.cache import cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -321,7 +321,7 @@ async def get_sharp_action(
         .options(selectinload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
-            or_(Prop.is_stale == True, Prop.is_boosted == True),
+            or_(Prop.is_stale, Prop.is_boosted),
         )
         .order_by(
             desc(func.greatest(func.coalesce(Prop.ev_over, 0), func.coalesce(Prop.ev_under, 0)))
@@ -343,7 +343,8 @@ async def parlay_builder(
     Suggest optimal parlay combinations maximizing total EV.
     Returns legs + combined probability + expected payout.
     """
-    from app.services.kelly_criterion import parlay_probability, parlay_ev as calc_parlay_ev
+    from app.services.kelly_criterion import parlay_ev as calc_parlay_ev
+    from app.services.kelly_criterion import parlay_probability
 
     # PrizePicks payout table by leg count
     PP_PAYOUTS = {2: 3.0, 3: 5.0, 4: 10.0, 5: 20.0, 6: 40.0}
@@ -398,7 +399,7 @@ async def parlay_builder(
         if len(legs) == leg_count:
             break
 
-    probs = [l["prob"] for l in legs]
+    probs = [leg["prob"] for leg in legs]
     combined_prob = parlay_probability(probs)
     ev_total = calc_parlay_ev(probs, payout)
 

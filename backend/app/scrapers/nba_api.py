@@ -4,8 +4,9 @@ Returns player game logs, season averages, and matchup data.
 No auth required but requires specific headers to avoid 403.
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
 from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)

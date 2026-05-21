@@ -5,7 +5,8 @@ Trains per-sport or per-stat-type models and saves them to disk.
 import logging
 import os
 import pickle
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)

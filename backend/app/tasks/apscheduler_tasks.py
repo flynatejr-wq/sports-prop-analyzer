@@ -5,14 +5,13 @@ that supports cron expressions, misfire handling, and job persistence.
 
 Usage: imported and started in app/main.py lifespan.
 """
-import asyncio
 import logging
 from datetime import datetime, timezone
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.memory import MemoryJobStore
-from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
+from apscheduler.executors.asyncio import AsyncIOExecutor
+from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
 from app.database import AsyncSessionLocal
@@ -173,7 +172,9 @@ async def job_cleanup_old_props():
     """Mark settled/old props as inactive at midnight UTC."""
     try:
         from datetime import date, timedelta
+
         from sqlalchemy import update
+
         from app.models.prop import Prop, PropStatus
         async with AsyncSessionLocal() as db:
             yesterday = (date.today() - timedelta(days=1)).isoformat()
@@ -191,9 +192,10 @@ async def job_cleanup_old_props():
 async def job_retrain_models():
     """Retrain ML models using latest historical data."""
     try:
-        from app.ml.model_trainer import train_ensemble
-        from app.ml.feature_engineering import build_training_dataset
         from sqlalchemy import select
+
+        from app.ml.feature_engineering import build_training_dataset
+        from app.ml.model_trainer import train_ensemble
         from app.models.prop import Prop, PropResult
 
         async with AsyncSessionLocal() as db:

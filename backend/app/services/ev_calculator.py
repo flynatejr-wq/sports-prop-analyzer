@@ -8,8 +8,8 @@ Core formulas:
 
 All public methods are pure functions — no I/O, easy to unit test.
 """
-from typing import Optional, Tuple
 import math
+from typing import Optional, Tuple
 
 
 def american_to_decimal(odds: float) -> float:
@@ -196,7 +196,7 @@ def detect_steam_move(
     """
     if len(line_history) < 2:
         return False
-    recent = [l for ts, l in line_history if True]  # simplified — filter by time in production
+    recent = [line for _ts, line in line_history]  # simplified — filter by time in production
     if not recent:
         return False
     movement = abs(current_line - recent[0])

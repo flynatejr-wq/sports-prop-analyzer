@@ -4,8 +4,9 @@ Uses DraftKings public REST API (no auth required for props).
 Endpoint discovered via browser network inspection.
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
 from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)

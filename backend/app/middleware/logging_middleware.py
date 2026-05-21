@@ -2,9 +2,10 @@
 Structured request/response logging middleware.
 Logs method, path, status code, duration, and client IP.
 """
-import time
 import logging
+import time
 import uuid
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 

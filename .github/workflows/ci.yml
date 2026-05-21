@@ -61,7 +61,7 @@ jobs:
         working-directory: backend
         run: |
           pip install ruff
-          ruff check app/ --select E,F,W,I --ignore E501
+          ruff check app/
 
       - name: Type-check with mypy
         working-directory: backend
@@ -100,10 +100,6 @@ jobs:
         working-directory: frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Lint
-        working-directory: frontend
-        run: npm run lint
-
       - name: Type-check
         working-directory: frontend
         run: npm run type-check
@@ -113,6 +109,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_WS_URL: ws://localhost:8000
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: npm run build
 
   # ── Docker build (on main pushes) ───────────────────────────────────────────

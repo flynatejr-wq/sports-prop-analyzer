@@ -1,15 +1,16 @@
 """Players API — search, profiles, analytics, and projection endpoints."""
 import logging
 from typing import Dict, List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
 from pydantic import BaseModel
+from sqlalchemy import desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.player import Player, PlayerStats
-from app.models.prop import Prop, PropStatus, PropResult
-from app.services.player_analytics import weighted_projection, recommend_vs_line
+from app.models.prop import Prop, PropStatus
+from app.services.player_analytics import recommend_vs_line, weighted_projection
 from app.utils.cache import cache
 
 logger = logging.getLogger(__name__)
@@ -54,13 +55,12 @@ async def search_players(
     limit: int = Query(25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Player).where(Player.is_active == True)
+    query = select(Player).where(Player.is_active)
     if q:
         query = query.where(Player.name.ilike(f"%{q}%"))
     if sport:
         query = query.where(Player.sport == sport.upper())
     if with_active_props:
-        from sqlalchemy.orm import selectinload
         query = query.join(Prop, Prop.player_id == Player.id).where(Prop.status == PropStatus.ACTIVE)
     query = query.order_by(Player.name).limit(limit)
     result = await db.execute(query)
@@ -165,7 +165,6 @@ async def get_player_analytics(
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    from app.services.ev_calculator import _normal_cdf
     col = _stat_type_to_col(stat_type)
 
     stats_result = await db.execute(

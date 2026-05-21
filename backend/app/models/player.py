@@ -1,8 +1,10 @@
 """Player and PlayerStats ORM models."""
-from sqlalchemy import String, Float, Integer, Boolean, ForeignKey, UniqueConstraint
+from typing import List, Optional
+
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
-from typing import Optional, List
 
 
 class Player(Base):

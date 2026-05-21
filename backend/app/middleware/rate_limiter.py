@@ -2,12 +2,14 @@
 Sliding-window rate limiter middleware using Redis (or in-memory fallback).
 Limits requests per IP per minute to prevent abuse.
 """
-import time
 import logging
+import time
 from typing import Dict, Tuple
+
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)

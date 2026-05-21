@@ -3,11 +3,12 @@ ML prediction interface — loads trained models and produces
 confidence scores, projected stat lines, and risk classifications.
 """
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
 import numpy as np
 
+from app.ml.feature_engineering import build_features_for_prop
 from app.ml.model_trainer import load_model
-from app.ml.feature_engineering import build_features_for_prop, FEATURE_NAMES
 
 logger = logging.getLogger(__name__)
 

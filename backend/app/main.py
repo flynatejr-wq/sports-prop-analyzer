@@ -11,14 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.utils import get_openapi
 
-from app.config import settings
-from app.database import engine, Base
-from app.middleware.rate_limiter import RateLimiterMiddleware
-from app.middleware.logging_middleware import RequestLoggingMiddleware
-from app.api import props, analytics, websocket
+from app.api import analytics, props, websocket
 from app.api.line_movement import router as line_movement_router
 from app.api.players import router as players_router
 from app.api.settings_api import router as settings_router
+from app.config import settings
+from app.database import Base, engine
+from app.middleware.logging_middleware import RequestLoggingMiddleware
+from app.middleware.rate_limiter import RateLimiterMiddleware
 from app.tasks.apscheduler_tasks import start_scheduler, stop_scheduler
 
 logging.basicConfig(

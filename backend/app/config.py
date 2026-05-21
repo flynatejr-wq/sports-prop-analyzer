@@ -1,7 +1,7 @@
 """Central configuration — all settings read from environment variables."""
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
-import os
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):

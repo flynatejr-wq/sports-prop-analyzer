@@ -3,10 +3,11 @@ Sleeper API scraper — player projections, rankings, and news.
 Free public API. Docs: https://docs.sleeper.app/
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from app.scrapers.base import BaseScraper
+from typing import Dict, List, Optional
+
 from app.config import settings
+from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 

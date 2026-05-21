@@ -4,10 +4,11 @@ Docs: https://the-odds-api.com/lol-odds-api/
 Requires API key in THE_ODDS_API_KEY env variable.
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from app.scrapers.base import BaseScraper
+from typing import Any, Dict, List, Optional
+
 from app.config import settings
+from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
@@ -179,11 +180,11 @@ class OddsAPIScraper(BaseScraper):
                     # Find or create the OddsLine for this player/stat/book
                     existing = next(
                         (
-                            l for l in lines
-                            if l.player_name == player_name
-                            and l.stat_type == stat_name
-                            and l.sportsbook == book_key
-                            and l.event_id == event_id
+                            line for line in lines
+                            if line.player_name == player_name
+                            and line.stat_type == stat_name
+                            and line.sportsbook == book_key
+                            and line.event_id == event_id
                         ),
                         None,
                     )

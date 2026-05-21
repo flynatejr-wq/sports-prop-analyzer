@@ -7,12 +7,11 @@ For multi-worker production, replace with Celery Beat (celery_app.py).
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import List
 
 from app.config import settings
 from app.database import AsyncSessionLocal
-from app.services.prop_analyzer import PropAnalyzer
 from app.services.alerts import dispatch_prop_alert
+from app.services.prop_analyzer import PropAnalyzer
 from app.utils.cache import cache
 
 logger = logging.getLogger(__name__)

@@ -1,10 +1,13 @@
 """User picks and bankroll tracking."""
-from sqlalchemy import String, Float, Integer, Boolean, ForeignKey, Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
-from typing import Optional
-from app.models.prop import PropResult
 import enum
+from typing import Optional
+
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+from app.models.prop import PropResult
 
 
 class BetDirection(str, enum.Enum):

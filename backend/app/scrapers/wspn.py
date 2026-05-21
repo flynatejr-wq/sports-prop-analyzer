@@ -3,15 +3,13 @@ WSPN (WagerSports Player News) scraper.
 Fetches player props, projections, and injury news from WSPN.
 Uses Playwright for JS-rendered pages + httpx for API endpoints.
 """
-import asyncio
 import logging
 import re
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from app.scrapers.base import BaseScraper
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 

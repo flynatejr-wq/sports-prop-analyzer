@@ -3,8 +3,9 @@ FanDuel player props scraper.
 Uses FanDuel's public content API — no auth required.
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from typing import Dict, List, Optional
+
 from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)

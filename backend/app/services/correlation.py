@@ -7,9 +7,8 @@ Key insight: On the same team, Points + Assists + Rebounds from the star player
 are positively correlated with each other — and with team total points (game pace).
 """
 import logging
-from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
-import math
+from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 

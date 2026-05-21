@@ -3,17 +3,18 @@ Line movement API — tracks and exposes historical line changes
 for detecting sharp action and steam moves.
 """
 import logging
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func, and_
-from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.odds import OddsSnapshot, SbookLine
-from app.models.prop import Prop, PropStatus
+from app.models.odds import OddsSnapshot
 from app.models.player import Player
+from app.models.prop import Prop, PropStatus
 from app.utils.cache import cache
 
 logger = logging.getLogger(__name__)

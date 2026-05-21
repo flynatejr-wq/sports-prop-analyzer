@@ -4,10 +4,11 @@ Endpoints discovered via browser network inspection.
 No auth required for read-only projections access.
 """
 import logging
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from app.scrapers.base import BaseScraper
+from typing import Any, Dict, List, Optional
+
 from app.config import settings
+from app.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 

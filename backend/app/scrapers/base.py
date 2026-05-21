@@ -6,8 +6,10 @@ import asyncio
 import logging
 import random
 import time
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
+
 import httpx
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
