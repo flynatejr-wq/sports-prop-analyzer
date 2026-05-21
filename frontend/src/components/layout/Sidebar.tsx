@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   BarChart3, Zap, Target, TrendingUp, Wallet, AlertCircle,
-  Activity, ChevronRight, Flame, Shield, Wifi, LineChart, Settings
+  Activity, ChevronRight, Flame, Shield, Wifi, LineChart, Settings, Users
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -17,6 +17,7 @@ const nav = [
   { href: "/props?tab=parlay", label: "Parlay Builder", icon: Zap, section: "Props" },
   { href: "/live-props", label: "Live Props", icon: Wifi, section: "Live" },
   { href: "/line-movement", label: "Line Movement", icon: LineChart, section: "Live" },
+  { href: "/players", label: "Players", icon: Users, section: "Live" },
   { href: "/analytics", label: "Analytics", icon: TrendingUp, section: "Tools" },
   { href: "/bankroll", label: "Bankroll", icon: Wallet, section: "Tools" },
   { href: "/settings", label: "Settings", icon: Settings, section: "Tools" },

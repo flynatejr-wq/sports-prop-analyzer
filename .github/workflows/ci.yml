@@ -2,9 +2,9 @@ name: CI / CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 env:
   PYTHON_VERSION: "3.11"
@@ -176,12 +176,55 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Deploy to VPS (optional — requires secrets) ─────────────────────────────
-  deploy:
-    name: Deploy to production
+  # ── Deploy to Railway ──────────────────────────────────────────────────────
+  deploy-railway:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service "7fbd4bd6-8647-4e0f-9d6e-94a6ebf1872f" \
+            --environment "ce0e364c-4d61-4348-901d-4511eb2c2112" \
+            --detach \
+            --dir backend
+
+      - name: Deploy frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service "8d0a446e-abfc-4a2a-9fa3-5d1e881d8628" \
+            --environment "ce0e364c-4d61-4348-901d-4511eb2c2112" \
+            --detach \
+            --dir frontend
+
+      - name: Trigger data refresh
+        run: |
+          sleep 30
+          curl -s -X POST https://backend-production-fe8e6.up.railway.app/api/v1/props/refresh || true
+          echo "Refresh triggered"
+
+  # ── Deploy to VPS (optional — requires SSH secrets) ──────────────────────
+  deploy-vps:
+    name: Deploy to VPS (optional)
     runs-on: ubuntu-latest
     needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      secrets.VPS_HOST != ''
     environment: production
 
     steps:

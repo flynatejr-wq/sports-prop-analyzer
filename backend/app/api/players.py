@@ -67,6 +67,83 @@ async def search_players(
     return result.scalars().all()
 
 
+@router.get("/with-props")
+async def players_with_active_props(
+    limit: int = Query(100, ge=1, le=200),
+    sport: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> List[Dict]:
+    """
+    Return players that have active props, enriched with best EV available.
+    Used by the Players directory page.
+    """
+    cache_key = f"players_with_props:{sport}:{limit}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    query = (
+        select(
+            Player.id,
+            Player.name,
+            Player.team,
+            Player.sport,
+            Player.image_url,
+            func.count(Prop.id).label("active_props"),
+            func.max(func.greatest(
+                func.coalesce(Prop.ev_over, 0),
+                func.coalesce(Prop.ev_under, 0),
+            )).label("best_ev"),
+        )
+        .join(Prop, Prop.player_id == Player.id)
+        .where(Prop.status == PropStatus.ACTIVE)
+        .group_by(Player.id, Player.name, Player.team, Player.sport, Player.image_url)
+        .order_by(desc("best_ev"))
+        .limit(limit)
+    )
+    if sport:
+        query = query.where(Prop.sport == sport.upper())
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    # For each player, get their best prop details
+    output = []
+    for row in rows:
+        # Fetch best prop for this player
+        best_prop_result = await db.execute(
+            select(Prop)
+            .where(Prop.player_id == row.id, Prop.status == PropStatus.ACTIVE)
+            .order_by(desc(func.greatest(
+                func.coalesce(Prop.ev_over, 0),
+                func.coalesce(Prop.ev_under, 0),
+            )))
+            .limit(1)
+        )
+        best_prop = best_prop_result.scalar_one_or_none()
+
+        ev_over = best_prop.ev_over or 0 if best_prop else 0
+        ev_under = best_prop.ev_under or 0 if best_prop else 0
+        best_ev = max(ev_over, ev_under)
+        best_dir = "OVER" if ev_over >= ev_under else "UNDER"
+
+        output.append({
+            "id": row.id,
+            "player_name": row.name,
+            "team": row.team,
+            "sport": row.sport,
+            "image_url": row.image_url,
+            "active_props": row.active_props,
+            "best_ev": round(best_ev, 2),
+            "best_direction": best_dir,
+            "best_stat_type": best_prop.stat_type if best_prop else "",
+            "best_line": best_prop.line if best_prop else 0,
+        })
+
+    await cache.set(cache_key, output, ttl=60)
+    return output
+
+
 @router.get("/{player_id}", response_model=PlayerOut)
 async def get_player(player_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Player).where(Player.id == player_id))

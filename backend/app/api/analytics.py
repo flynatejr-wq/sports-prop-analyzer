@@ -2,7 +2,7 @@
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, Integer, case
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -116,7 +116,7 @@ async def hit_rates_by_stat(
         select(
             Prop.stat_type,
             func.count().label("total"),
-            func.sum(func.cast(Prop.result == PropResult.HIT, type_=func.Integer())).label("hits"),
+            func.sum(case((Prop.result == PropResult.HIT, 1), else_=0)).label("hits"),
             func.avg(Prop.ev_over).label("avg_ev"),
         )
         .where(Prop.result != PropResult.PENDING)
