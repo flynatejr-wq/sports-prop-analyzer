@@ -2,6 +2,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import PropCard from "@/components/props/PropCard";
+import PropTable from "@/components/props/PropTable";
 import PropFilters from "@/components/props/PropFilters";
 import EVChart from "@/components/charts/EVChart";
 import { useTopProps, useMispriced, useBestBets } from "@/hooks/useProps";
@@ -9,7 +10,7 @@ import { getParlayBuilder, getSharpAction } from "@/lib/api";
 import type { FilterState } from "@/lib/types";
 import useSWR from "swr";
 import { clsx } from "clsx";
-import { Zap, AlertCircle, Flame, Shield, Target } from "lucide-react";
+import { Zap, AlertCircle, Flame, Shield, Target, LayoutGrid, Table2 } from "lucide-react";
 
 const TABS = [
   { id: "all", label: "All Props", icon: Target },
@@ -153,6 +154,7 @@ function PropsContent() {
   const initialTab = searchParams.get("tab") ?? "all";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const { data: allProps = [], isLoading: loadingAll } = useTopProps(
     activeTab === "all" ? filters : {}
@@ -200,9 +202,34 @@ function PropsContent() {
         ))}
       </div>
 
-      {/* Filters — only for all/best-bets */}
+      {/* Filters + view toggle — only for all/best-bets */}
       {(activeTab === "all" || activeTab === "best-bets") && (
-        <PropFilters filters={filters} onChange={setFilters} />
+        <div className="flex items-start gap-3 flex-wrap">
+          <PropFilters filters={filters} onChange={setFilters} />
+          {/* View mode toggle */}
+          <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-lg ml-auto flex-shrink-0">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={clsx(
+                "p-1.5 rounded transition-all",
+                viewMode === "grid" ? "bg-primary text-white" : "text-muted hover:text-white"
+              )}
+              title="Grid view"
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={clsx(
+                "p-1.5 rounded transition-all",
+                viewMode === "table" ? "bg-primary text-white" : "text-muted hover:text-white"
+              )}
+              title="Table view"
+            >
+              <Table2 size={14} />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Chart for all props view */}
@@ -227,6 +254,8 @@ function PropsContent() {
           <p className="text-white font-medium">No props found</p>
           <p className="text-muted text-sm mt-1">Try adjusting your filters</p>
         </div>
+      ) : viewMode === "table" ? (
+        <PropTable props={activeProps} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {activeProps.map((p) => <PropCard key={p.id} prop={p} />)}

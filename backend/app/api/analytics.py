@@ -180,6 +180,48 @@ async def add_pick(req: PickRequest, db: AsyncSession = Depends(get_db)) -> Dict
     return {"id": pick.id, "message": "Pick saved"}
 
 
+class SettlePickRequest(BaseModel):
+    result: str           # "hit" or "miss"
+    actual_value: Optional[float] = None
+
+
+@router.patch("/picks/{pick_id}")
+async def settle_pick(pick_id: int, req: SettlePickRequest, db: AsyncSession = Depends(get_db)) -> Dict:
+    """Mark a pick as hit or miss and calculate profit/loss."""
+    result = await db.execute(select(UserPick).where(UserPick.id == pick_id))
+    pick = result.scalar_one_or_none()
+    if not pick:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Pick not found")
+
+    pick.result = PropResult.HIT if req.result.lower() == "hit" else PropResult.MISS
+
+    if pick.result == PropResult.HIT:
+        odds = pick.odds or -110.0
+        if odds > 0:
+            profit = pick.stake * (odds / 100)
+        else:
+            profit = pick.stake * (100 / abs(odds))
+        pick.profit_loss = round(profit, 2)
+    else:
+        pick.profit_loss = -round(pick.stake, 2)
+
+    return {
+        "id": pick.id,
+        "result": pick.result.value,
+        "profit_loss": pick.profit_loss,
+    }
+
+
+@router.delete("/picks/{pick_id}", status_code=204)
+async def delete_pick(pick_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a tracked pick."""
+    result = await db.execute(select(UserPick).where(UserPick.id == pick_id))
+    pick = result.scalar_one_or_none()
+    if pick:
+        await db.delete(pick)
+
+
 @router.get("/picks")
 async def get_picks(db: AsyncSession = Depends(get_db)) -> List[Dict]:
     result = await db.execute(
