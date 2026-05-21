@@ -73,6 +73,15 @@ async def job_refresh_props():
             await cache.set("last_refresh", datetime.now(timezone.utc).isoformat(), ttl=600)
             elapsed = (datetime.now(timezone.utc) - start).total_seconds()
             logger.info("[job] prop_refresh done: %d props in %.1fs", len(enriched), elapsed)
+
+            # Push update to all connected WebSocket clients immediately
+            try:
+                from app.api.websocket import broadcast
+                await broadcast({"type": "props_update", "data": top[:25]})
+                logger.debug("[job] WS broadcast sent to connected clients")
+            except Exception as ws_exc:
+                logger.debug("[job] WS broadcast skipped: %s", ws_exc)
+
     except Exception as exc:
         logger.error("[job] prop_refresh failed: %s", exc, exc_info=True)
 
@@ -93,6 +102,23 @@ async def job_check_alerts():
             await dispatch_prop_alert(prop)
             await cache.set(dedup_key, True, ttl=3600)
             sent += 1
+            # Also push in-app alert to WebSocket clients
+            try:
+                from app.api.websocket import broadcast
+                direction = "OVER" if (prop.get("ev_over") or 0) >= (prop.get("ev_under") or 0) else "UNDER"
+                best_ev = max(prop.get("ev_over", 0) or 0, prop.get("ev_under", 0) or 0)
+                await broadcast({
+                    "type": "alert",
+                    "data": {
+                        "title": f"🎯 High EV Alert — {prop.get('player_name', 'Player')}",
+                        "message": (
+                            f"{prop.get('stat_type')} {direction} {prop.get('line')} "
+                            f"— +{best_ev:.1f}% EV detected"
+                        ),
+                    }
+                })
+            except Exception:
+                pass
         if sent:
             logger.info("[job] alert_check: sent %d alerts", sent)
     except Exception as exc:
