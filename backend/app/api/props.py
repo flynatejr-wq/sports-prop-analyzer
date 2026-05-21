@@ -31,6 +31,7 @@ class PropOut(BaseModel):
     sport: str
     stat_type: str
     line: float
+    source: str = "oddsapi"
     ev_over: Optional[float]
     ev_under: Optional[float]
     edge_classification: Optional[str] = None
@@ -39,6 +40,7 @@ class PropOut(BaseModel):
     fair_value: Optional[float]
     implied_prob_over: Optional[float]
     implied_prob_under: Optional[float]
+    fair_prob_over: Optional[float] = None
     is_stale: bool
     is_boosted: bool
     last_5_avg: Optional[float]
@@ -51,6 +53,7 @@ class PropOut(BaseModel):
     opponent: Optional[str]
     status: str
     image_url: Optional[str] = None
+    ai_insight: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -81,6 +84,7 @@ async def _enrich_with_player(db: AsyncSession, prop: Prop) -> Dict:
         "sport": prop.sport,
         "stat_type": prop.stat_type,
         "line": prop.line,
+        "source": prop.source,
         "ev_over": prop.ev_over,
         "ev_under": prop.ev_under,
         "edge_classification": None,
@@ -89,6 +93,7 @@ async def _enrich_with_player(db: AsyncSession, prop: Prop) -> Dict:
         "fair_value": prop.fair_value,
         "implied_prob_over": prop.implied_prob_over,
         "implied_prob_under": prop.implied_prob_under,
+        "fair_prob_over": prop.implied_prob_over,  # best proxy without separate column
         "is_stale": prop.is_stale,
         "is_boosted": prop.is_boosted,
         "last_5_avg": prop.last_5_avg,
@@ -104,6 +109,7 @@ async def _enrich_with_player(db: AsyncSession, prop: Prop) -> Dict:
         "away_avg": prop.away_avg,
         "volatility_score": prop.volatility_score,
         "notes": prop.notes,
+        "ai_insight": None,
     }
 
     if prop.player:
@@ -116,7 +122,99 @@ async def _enrich_with_player(db: AsyncSession, prop: Prop) -> Dict:
     from app.services.ev_calculator import classify_edge
     d["edge_classification"] = classify_edge(best_ev)
 
+    # Generate AI insight text
+    d["ai_insight"] = _generate_ai_insight(d)
+
     return d
+
+
+def _generate_ai_insight(d: Dict) -> str:
+    """Generate a natural-language explanation of why this prop has edge."""
+    parts: List[str] = []
+    ev_over = d.get("ev_over") or 0
+    ev_under = d.get("ev_under") or 0
+    best_ev = max(ev_over, ev_under)
+    direction = "OVER" if ev_over >= ev_under else "UNDER"
+    player = d.get("player_name", "Player")
+    stat = d.get("stat_type", "stat")
+    line = d.get("line")
+    consensus = d.get("consensus_line")
+    disc = d.get("line_discrepancy")
+    hit_rate = d.get("hit_rate_over")
+    season_avg = d.get("season_avg")
+    last5 = d.get("last_5_avg")
+    source = d.get("source", "oddsapi")
+    prob_over = d.get("implied_prob_over") or 0.5
+
+    # Edge explanation
+    if best_ev >= 10:
+        parts.append(
+            f"Elite +{best_ev:.1f}% edge detected — books are significantly mispricing "
+            f"{player}'s {stat.lower()} {direction} {line}."
+        )
+    elif best_ev >= 5:
+        parts.append(
+            f"Strong +{best_ev:.1f}% edge vs sportsbook consensus on "
+            f"{stat.lower()} {direction} {line}."
+        )
+    elif best_ev > 0:
+        parts.append(
+            f"+{best_ev:.1f}% edge identified across sportsbook lines."
+        )
+
+    # Cross-book consensus context
+    if source == "oddsapi" and consensus is not None:
+        parts.append(
+            f"Fair probability derived by removing vig across multiple books: "
+            f"{prob_over*100:.0f}% chance of going {direction}."
+        )
+
+    # Line discrepancy
+    if disc is not None and abs(disc) >= 0.5:
+        if disc < 0:
+            parts.append(
+                f"PrizePicks line is {abs(disc):.1f} below the sportsbook consensus — "
+                f"value on the OVER vs market."
+            )
+        else:
+            parts.append(
+                f"PrizePicks line sits {disc:.1f} above consensus — "
+                f"value on the UNDER vs market."
+            )
+
+    # Historical hit rate
+    if hit_rate is not None:
+        pct = round(hit_rate * 100)
+        if direction == "OVER" and pct >= 60:
+            parts.append(f"Hit OVER {pct}% of last 5 games at this line.")
+        elif direction == "UNDER" and pct <= 40:
+            parts.append(f"Hit UNDER {100 - pct}% of last 5 games at this line.")
+
+    # Trend vs season avg
+    if season_avg and last5:
+        trend = last5 - season_avg
+        if abs(trend) >= 2:
+            word = "above" if trend > 0 else "below"
+            parts.append(
+                f"Running {abs(trend):.1f} {word} season average "
+                f"over last 5 games ({last5:.1f} vs {season_avg:.1f} avg)."
+            )
+
+    # Stale line signal
+    if d.get("is_stale"):
+        parts.append(
+            "Line appears stale — consensus has moved but this book hasn't adjusted. "
+            "Sharp players typically target these discrepancies."
+        )
+
+    # Fallback
+    if not parts:
+        parts.append(
+            f"Sportsbook consensus line: {consensus or line}. "
+            f"Implied over probability: {prob_over*100:.0f}%."
+        )
+
+    return " ".join(parts)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -171,13 +269,16 @@ async def get_best_bets(
     sport: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Best bets: high EV + high ML confidence + low risk."""
+    """Best bets: highest EV props sorted by edge."""
     query = (
         select(Prop)
         .options(selectinload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
-            or_(Prop.ev_over >= 5.0, Prop.ev_under >= 5.0),
+            or_(
+                Prop.ev_over.isnot(None),
+                Prop.ev_under.isnot(None),
+            ),
         )
         .order_by(
             desc(func.greatest(func.coalesce(Prop.ev_over, 0), func.coalesce(Prop.ev_under, 0)))

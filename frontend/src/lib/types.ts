@@ -9,6 +9,7 @@ export interface Prop {
   sport: Sport;
   stat_type: string;
   line: number;
+  source?: string | null;
   ev_over?: number | null;
   ev_under?: number | null;
   edge_classification?: EdgeClass | null;
@@ -17,6 +18,7 @@ export interface Prop {
   fair_value?: number | null;
   implied_prob_over?: number | null;
   implied_prob_under?: number | null;
+  fair_prob_over?: number | null;
   is_stale: boolean;
   is_boosted: boolean;
   last_5_avg?: number | null;
@@ -33,6 +35,7 @@ export interface Prop {
   away_avg?: number | null;
   volatility_score?: number | null;
   notes?: string | null;
+  ai_insight?: string | null;
 }
 
 export interface AnalyticsSummary {
