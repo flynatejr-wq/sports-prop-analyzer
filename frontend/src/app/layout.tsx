@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import MobileAwareLayout from "@/components/layout/MobileAwareLayout";
@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   description:
     "Real-time AI-powered sports prop EV analysis. Find the best bets before the lines move.",
   keywords: ["sports betting", "prop bets", "EV calculator", "PrizePicks", "DraftKings"],
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

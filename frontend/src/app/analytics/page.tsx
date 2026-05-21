@@ -3,7 +3,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { getAnalyticsSummary, getHitRates, getPicks } from "@/lib/api";
 import HitRateChart from "@/components/charts/HitRateChart";
-import { TrendingUp, TrendingDown, BarChart2, Target, CheckCircle, XCircle, Trash2, Trophy } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart2, Target, CheckCircle, XCircle, Trash2, Trophy, Download } from "lucide-react";
 import { clsx } from "clsx";
 import { format, parseISO } from "date-fns";
 import { useNotificationStore } from "@/store";
@@ -25,12 +25,40 @@ async function deletePick(id: number) {
   if (!res.ok) throw new Error("Failed to delete");
 }
 
+function exportPicksCSV(picks: import("@/lib/types").UserPick[]) {
+  const headers = ["ID", "Prop ID", "Direction", "Stake", "Odds", "EV at Pick", "Result", "P/L", "Date"];
+  const rows = picks.map((p) => [
+    p.id,
+    p.prop_id,
+    p.direction.toUpperCase(),
+    p.stake,
+    p.odds ?? "",
+    p.ev_at_pick != null ? `+${p.ev_at_pick.toFixed(2)}%` : "",
+    p.result.toUpperCase(),
+    p.profit_loss != null ? p.profit_loss.toFixed(2) : "",
+    p.created_at ? format(parseISO(p.created_at), "yyyy-MM-dd HH:mm") : "",
+  ]);
+
+  const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `propedge-picks-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Picks table ───────────────────────────────────────────────────────────────
 
 function PicksTable() {
   const { addToast } = useNotificationStore();
   const { data: picks = [], isLoading, mutate } = useSWR("picks", getPicks, { refreshInterval: 30000 });
   const [acting, setActing] = useState<number | null>(null);
+
+  const pendingCount  = picks.filter((p) => p.result === "pending").length;
+  const settledCount  = picks.filter((p) => p.result !== "pending").length;
+  const totalPL       = picks.reduce((s, p) => s + (p.profit_loss ?? 0), 0);
 
   async function handleSettle(id: number, result: "hit" | "miss") {
     setActing(id);
@@ -73,12 +101,30 @@ function PicksTable() {
       <div className="text-center py-10">
         <Trophy size={28} className="text-muted mx-auto mb-2 opacity-40" />
         <p className="text-muted text-sm">No picks tracked yet</p>
-        <p className="text-muted text-xs mt-1">Click "Track this Pick" on any prop card</p>
+        <p className="text-muted text-xs mt-1">Click &quot;Track this Pick&quot; on any prop card or use Quick Picks</p>
       </div>
     );
   }
 
   return (
+    <div>
+      {/* Mini stats + export */}
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-muted">{picks.length} total</span>
+          <span className="text-warning">{pendingCount} pending</span>
+          <span className="text-white">{settledCount} settled</span>
+          <span className={clsx("font-bold font-mono", totalPL >= 0 ? "text-success" : "text-danger")}>
+            {totalPL >= 0 ? "+" : ""}{totalPL.toFixed(2)}u P/L
+          </span>
+        </div>
+        <button
+          onClick={() => exportPicksCSV(picks)}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-xs text-muted hover:text-white hover:border-primary/40 transition-all"
+        >
+          <Download size={12} /> Export CSV
+        </button>
+      </div>
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
@@ -166,6 +212,7 @@ function PicksTable() {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
