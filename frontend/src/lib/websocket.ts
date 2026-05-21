@@ -84,8 +84,20 @@ class PropWebSocket {
   }
 }
 
-const WS_URL =
-  (process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000") + "/ws/live";
+// Derive WebSocket URL from the API URL env var if WS_URL not explicit.
+// In production this will typically be: wss://backend-xxx.up.railway.app/ws/live
+function buildWsUrl(): string {
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL + "/ws/live";
+  }
+  const api = process.env.NEXT_PUBLIC_API_URL;
+  if (api) {
+    return api.replace(/^https?/, (s) => (s === "https" ? "wss" : "ws")) + "/ws/live";
+  }
+  return "ws://localhost:8000/ws/live";
+}
+
+const WS_URL = buildWsUrl();
 
 export const propSocket = new PropWebSocket(WS_URL);
 export type { WSMessage, Listener };

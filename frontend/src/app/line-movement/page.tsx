@@ -9,19 +9,17 @@ import OddsMovementChart from "@/components/charts/OddsMovement";
 import { getOddsMovement } from "@/lib/api";
 import { StaggerChildren, StaggerItem, FadeIn } from "@/components/ui/AnimatedCard";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 async function fetchMovements(hours: number, sport?: string, minMovement?: number) {
   const q = new URLSearchParams({ hours: String(hours) });
   if (sport) q.set("sport", sport);
   if (minMovement) q.set("min_movement", String(minMovement));
-  const res = await fetch(`${BASE}/api/v1/line-movement/recent?${q}`);
+  const res = await fetch(`/api/v1/line-movement/recent?${q}`);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 }
 
 async function fetchSteamMoves() {
-  const res = await fetch(`${BASE}/api/v1/line-movement/steam-moves`);
+  const res = await fetch(`/api/v1/line-movement/steam-moves`);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 }

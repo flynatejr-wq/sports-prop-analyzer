@@ -7,10 +7,8 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 async function fetchSection(path: string) {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(path);
   if (!res.ok) return [];
   return res.json();
 }

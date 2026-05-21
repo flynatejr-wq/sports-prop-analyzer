@@ -8,7 +8,12 @@ import EVChart from "@/components/charts/EVChart";
 // Server component — initial data via API, then SWR takes over on client
 async function getInitialProps() {
   try {
-    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    // On the server, NEXT_PUBLIC_API_URL points to the backend directly.
+    // Fallback to localhost for local dev.
+    const base =
+      process.env.NEXT_PUBLIC_API_URL ??
+      process.env.BACKEND_URL ??
+      "http://localhost:8000";
     const res = await fetch(`${base}/api/v1/props/top?limit=8&min_ev=0`, {
       next: { revalidate: 30 },
     });

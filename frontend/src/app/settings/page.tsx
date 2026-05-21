@@ -7,15 +7,13 @@ import { clsx } from "clsx";
 import { FadeIn } from "@/components/ui/AnimatedCard";
 import { useNotificationStore } from "@/store";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 async function fetchSettings() {
-  const res = await fetch(`${BASE}/api/v1/settings/`);
+  const res = await fetch(`/api/v1/settings/`);
   return res.json();
 }
 
 async function fetchStatus() {
-  const res = await fetch(`${BASE}/api/v1/settings/system-status`);
+  const res = await fetch(`/api/v1/settings/system-status`);
   return res.json();
 }
 
@@ -101,7 +99,7 @@ export default function SettingsPage() {
   async function saveAlerts() {
     setSaving(true);
     try {
-      await fetch(`${BASE}/api/v1/settings/alerts`, {
+      await fetch(`/api/v1/settings/alerts`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(alertSettings),
@@ -117,7 +115,7 @@ export default function SettingsPage() {
   async function saveBankroll() {
     setSaving(true);
     try {
-      await fetch(`${BASE}/api/v1/settings/bankroll`, {
+      await fetch(`/api/v1/settings/bankroll`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bankrollSettings),
@@ -133,7 +131,7 @@ export default function SettingsPage() {
   async function testDiscord() {
     setTestingDiscord(true);
     try {
-      const res = await fetch(`${BASE}/api/v1/settings/test-discord`);
+      const res = await fetch(`/api/v1/settings/test-discord`);
       const data = await res.json();
       addToast({ type: data.success ? "success" : "warning", title: data.message });
     } finally {
@@ -144,7 +142,7 @@ export default function SettingsPage() {
   async function testTelegram() {
     setTestingTelegram(true);
     try {
-      const res = await fetch(`${BASE}/api/v1/settings/test-telegram`);
+      const res = await fetch(`/api/v1/settings/test-telegram`);
       const data = await res.json();
       addToast({ type: data.success ? "success" : "warning", title: data.success ? "Telegram test sent!" : "Telegram not configured" });
     } finally {

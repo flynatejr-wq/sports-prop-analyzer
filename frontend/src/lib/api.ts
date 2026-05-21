@@ -8,10 +8,10 @@ import type {
   KellyResponse,
 } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
+// Use relative paths so Next.js rewrites proxy to the backend.
+// No NEXT_PUBLIC_API_URL needed at build time — server handles routing.
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(path, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

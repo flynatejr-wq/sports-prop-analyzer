@@ -3,10 +3,8 @@ import useSWR from "swr";
 import { TrendingUp, TrendingDown, Brain, ArrowRight } from "lucide-react";
 import { clsx } from "clsx";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 async function fetchTop5() {
-  const res = await fetch(`${BASE}/api/v1/props/top?limit=5&min_ev=0`);
+  const res = await fetch(`/api/v1/props/top?limit=5&min_ev=0`);
   if (!res.ok) return [];
   return res.json();
 }
