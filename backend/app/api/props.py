@@ -2,6 +2,7 @@
 Props API — CRUD + analysis endpoints for props.
 Includes top picks, EV ranking, filters, and per-prop detail.
 """
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -9,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from app.database import get_db
 from app.models.player import Player
@@ -237,7 +238,7 @@ async def get_top_props(
 
     query = (
         select(Prop)
-        .options(selectinload(Prop.player))
+        .options(joinedload(Prop.player))
         .where(Prop.status == PropStatus.ACTIVE)
         .where(
             or_(
@@ -258,7 +259,7 @@ async def get_top_props(
 
     result = await db.execute(query)
     props = result.scalars().all()
-    enriched = [await _enrich_with_player(db, p) for p in props]
+    enriched = list(await asyncio.gather(*[_enrich_with_player(db, p) for p in props]))
 
     await cache.set(cache_key, enriched, ttl=30)
     return enriched
@@ -272,7 +273,7 @@ async def get_best_bets(
     """Best bets: highest EV props sorted by edge."""
     query = (
         select(Prop)
-        .options(selectinload(Prop.player))
+        .options(joinedload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             or_(
@@ -289,7 +290,7 @@ async def get_best_bets(
         query = query.where(Prop.sport == sport.upper())
 
     result = await db.execute(query)
-    return [await _enrich_with_player(db, p) for p in result.scalars().all()]
+    return list(await asyncio.gather(*[_enrich_with_player(db, p) for p in result.scalars().all()]))
 
 
 @router.get("/mispriced", response_model=List[PropOut])
@@ -299,7 +300,7 @@ async def get_mispriced_props(
     """Props with the largest line discrepancy vs sportsbook consensus."""
     query = (
         select(Prop)
-        .options(selectinload(Prop.player))
+        .options(joinedload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             Prop.line_discrepancy.isnot(None),
@@ -308,7 +309,7 @@ async def get_mispriced_props(
         .limit(20)
     )
     result = await db.execute(query)
-    return [await _enrich_with_player(db, p) for p in result.scalars().all()]
+    return list(await asyncio.gather(*[_enrich_with_player(db, p) for p in result.scalars().all()]))
 
 
 @router.get("/sharp-action", response_model=List[PropOut])
@@ -318,7 +319,7 @@ async def get_sharp_action(
     """Stale or rapidly-moving lines — potential sharp money signal."""
     query = (
         select(Prop)
-        .options(selectinload(Prop.player))
+        .options(joinedload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             or_(Prop.is_stale, Prop.is_boosted),
@@ -329,7 +330,7 @@ async def get_sharp_action(
         .limit(20)
     )
     result = await db.execute(query)
-    return [await _enrich_with_player(db, p) for p in result.scalars().all()]
+    return list(await asyncio.gather(*[_enrich_with_player(db, p) for p in result.scalars().all()]))
 
 
 @router.get("/parlay-builder", response_model=Dict[str, Any])
@@ -352,7 +353,7 @@ async def parlay_builder(
 
     query = (
         select(Prop)
-        .options(selectinload(Prop.player))
+        .options(joinedload(Prop.player))
         .where(
             Prop.status == PropStatus.ACTIVE,
             or_(Prop.ev_over >= min_ev_per_leg, Prop.ev_under >= min_ev_per_leg),
@@ -416,7 +417,7 @@ async def parlay_builder(
 @router.get("/{prop_id}", response_model=PropDetailOut)
 async def get_prop(prop_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Prop).options(selectinload(Prop.player)).where(Prop.id == prop_id)
+        select(Prop).options(joinedload(Prop.player)).where(Prop.id == prop_id)
     )
     prop = result.scalar_one_or_none()
     if not prop:
@@ -445,7 +446,7 @@ async def search_player_props(
     """Search active props for a specific player."""
     query = (
         select(Prop)
-        .options(selectinload(Prop.player))
+        .options(joinedload(Prop.player))
         .join(Player, Prop.player_id == Player.id)
         .where(
             Player.name.ilike(f"%{player_name}%"),
@@ -453,4 +454,4 @@ async def search_player_props(
         )
     )
     result = await db.execute(query)
-    return [await _enrich_with_player(db, p) for p in result.scalars().all()]
+    return list(await asyncio.gather(*[_enrich_with_player(db, p) for p in result.scalars().all()]))
