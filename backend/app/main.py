@@ -14,6 +14,7 @@ from fastapi.openapi.utils import get_openapi
 from app.api import analytics, props, websocket
 from app.api.line_movement import router as line_movement_router
 from app.api.players import router as players_router
+from app.api.seed import router as seed_router
 from app.api.settings_api import router as settings_router
 from app.config import settings
 from app.database import Base, engine
@@ -82,6 +83,7 @@ app.include_router(analytics.router,         prefix=f"{V1}/analytics",     tags=
 app.include_router(players_router,           prefix=f"{V1}/players",       tags=["Players"])
 app.include_router(line_movement_router,     prefix=f"{V1}/line-movement", tags=["Line Movement"])
 app.include_router(settings_router,          prefix=f"{V1}/settings",      tags=["Settings"])
+app.include_router(seed_router,              prefix=f"{V1}",               tags=["Seed"])
 app.include_router(websocket.router,         prefix="/ws",                 tags=["WebSocket"])
 
 
